@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Voice Note V27</title>
+    <title>Voice Note V28</title>
     <style>
         /* [Apple Style Variables] */
         :root {
@@ -30,10 +30,11 @@
             --btn-pause-bg: #FDFFB6;  --btn-pause-text: #6B6B38;
             --btn-stop-bg: #FFD3B6;   --btn-stop-text: #7A4633;
             
-            --btn-util-bg: #DCD3FF;   --btn-util-text: #4A3F6B;
             --btn-save-bg: #A0C4FF;   --btn-save-text: #2B4570;
             --btn-txt-bg: #FFD6E0;    --btn-txt-text: #8B4055;
-            --btn-audio-bg: #FFCC80;  --btn-audio-text: #663C00; /* 오디오 로드 버튼 색상 */
+            
+            /* [V28] Smart Load Button */
+            --btn-load-bg: #DCD3FF;   --btn-load-text: #4A3F6B; 
         }
 
         /* [Dark Mode] */
@@ -59,10 +60,9 @@
             --btn-start-bg: #598F78;  --btn-start-text: #FFFFFF;
             --btn-pause-bg: #8F8F59;  --btn-pause-text: #FFFFFF;
             --btn-stop-bg: #A66E5C;   --btn-stop-text: #FFFFFF;
-            --btn-util-bg: #685E8A;   --btn-util-text: #FFFFFF;
             --btn-save-bg: #4A6FA5;   --btn-save-text: #FFFFFF;
             --btn-txt-bg: #A65D6E;    --btn-txt-text: #FFFFFF;
-            --btn-audio-bg: #B38F00;  --btn-audio-text: #FFFFFF;
+            --btn-load-bg: #685E8A;   --btn-load-text: #FFFFFF;
         }
 
         body { 
@@ -111,9 +111,8 @@
         .btn-stop { background-color: var(--btn-stop-bg); color: var(--btn-stop-text); }
         
         .btn-save { background-color: var(--btn-save-bg); color: var(--btn-save-text); }
-        .btn-util { background-color: var(--btn-util-bg); color: var(--btn-util-text); }
         .btn-txt { background-color: var(--btn-txt-bg); color: var(--btn-txt-text); }
-        .btn-audio-load { background-color: var(--btn-audio-bg); color: var(--btn-audio-text); }
+        .btn-load { background-color: var(--btn-load-bg); color: var(--btn-load-text); } /* Smart Load */
         
         .hidden { display: none !important; }
 
@@ -198,18 +197,17 @@
         }
         .history-item:hover { background: var(--memo-hover); }
 
-        /* Audio Container - Visible when loaded */
+        /* Audio Container */
         #audioContainer { display: none; margin-top: 15px; width: 100%; }
         audio { width: 100%; outline: none; border-radius: 10px; }
         
-        #fileInput { display: none; }
-        #audioInput { display: none; }
+        #universalLoader { display: none; }
     </style>
 </head>
 <body>
 
     <header>
-        <h2>🎙️ Voice Note V27</h2>
+        <h2>🎙️ Voice Note V28</h2>
         <div class="header-right">
             <div id="timer" class="timer">00:00</div>
             <button class="btn-theme" onclick="toggleTheme()" id="btnTheme">🌙 Dark</button>
@@ -238,12 +236,10 @@
         
         <div style="width:10px;"></div>
         
-        <button class="control-btn btn-util" onclick="document.getElementById('fileInput').click()">📂 1. Load JSON</button>
-        <button class="control-btn btn-audio-load" onclick="document.getElementById('audioInput').click()">🎵 2. Load Audio</button>
-        <button class="control-btn btn-util" onclick="newSession()">📄 New</button>
+        <button class="control-btn btn-load" onclick="document.getElementById('universalLoader').click()">📂 Smart Load</button>
+        <button class="control-btn btn-load" onclick="newSession()">📄 New</button>
         
-        <input type="file" id="fileInput" accept=".json" onchange="loadProject(this)">
-        <input type="file" id="audioInput" accept="audio/*" onchange="loadAudioFile(this)">
+        <input type="file" id="universalLoader" multiple accept=".json, .txt, audio/*" onchange="handleSmartLoad(this)">
     </div>
 
     <div id="audioContainer">
@@ -260,9 +256,8 @@
             <div id="transcriptScroll">
                 <div id="finalContainer">
                     <div style="color:var(--text-ghost); text-align:center; margin-top:80px; font-weight: 500;">
-                        1. Press <strong>Load JSON</strong> to restore text.<br>
-                        2. Press <strong>Load Audio</strong> to restore sound.<br>
-                        Or press <strong>Start</strong> to record new.
+                        Press <strong>Start</strong> to begin.<br>
+                        <strong>[Smart Load]</strong> supports .json, .wav, .txt
                     </div>
                 </div>
                 <div id="interimText"></div>
@@ -347,7 +342,8 @@
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
                     const transcript = event.results[i][0].transcript;
                     if (!sentenceStartMap[i]) {
-                        sentenceStartMap[i] = Math.max(0, currentRealTime - 1.0);
+                        // [V28 Sync] 4.0s Safety Margin
+                        sentenceStartMap[i] = Math.max(0, currentRealTime - 4.0);
                     }
                     if (event.results[i].isFinal) {
                         let finalTime = sentenceStartMap[i];
@@ -369,7 +365,7 @@
             recognition.onend = () => {
                 if (lastInterim.trim() !== "") {
                     let currentRealTime = (Date.now() - startTime - pausedTime) / 1000;
-                    addFinalRow(currentRealTime - 1.0, lastInterim); 
+                    addFinalRow(Math.max(0, currentRealTime - 4.0), lastInterim); 
                     lastInterim = ""; interimText.innerText = "";
                 }
                 if (isRecording && !isPaused) {
@@ -413,7 +409,7 @@
             const ghost = interimText.innerText;
             if (!ghost) return;
             let currentRealTime = (Date.now() - startTime - pausedTime) / 1000;
-            addFinalRow(currentRealTime - 1.0, ghost); 
+            addFinalRow(Math.max(0, currentRealTime - 4.0), ghost); 
             interimText.innerText = ''; lastInterim = ""; sentenceStartMap = {};
             recognition.abort(); 
         }
@@ -657,34 +653,65 @@
             }
         }
 
-        // [V27 Load Logic]
-        function loadProject(input) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const data = JSON.parse(e.target.result);
-                // 1. Memo Restore (HTML)
-                memoArea.innerHTML = data.memoHTML;
-                attachMemoEvents(); // Re-bind click events
-                
-                // 2. Transcript Restore (Re-build rows)
-                finalContainer.innerHTML = '';
-                data.scripts.forEach(item => { addFinalRow(parseFloat(item.time), item.text); });
-                
-                alert("Project Loaded! Now please load the Audio file.");
-            };
-            reader.readAsText(input.files[0]);
-        }
+        // [V28] Smart Universal Loader
+        function handleSmartLoad(input) {
+            const files = input.files;
+            if (files.length === 0) return;
 
-        // [V27 Audio Load Logic]
-        function loadAudioFile(input) {
-            const file = input.files[0];
-            if(file) {
-                const url = URL.createObjectURL(file);
-                audioPlayer.src = url;
-                audioContainer.style.display = 'block';
-                // Also update global audioBlob for re-saving if needed
-                audioBlob = file; 
+            let loadedCount = 0;
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                
+                // 1. JSON (Project)
+                if (file.name.toLowerCase().endsWith('.json')) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const data = JSON.parse(e.target.result);
+                        memoArea.innerHTML = data.memoHTML;
+                        attachMemoEvents();
+                        finalContainer.innerHTML = '';
+                        data.scripts.forEach(item => { addFinalRow(parseFloat(item.time), item.text); });
+                        loadedCount++;
+                    };
+                    reader.readAsText(file);
+                }
+                
+                // 2. Audio (WAV, MP3, etc)
+                else if (file.type.startsWith('audio/')) {
+                    const url = URL.createObjectURL(file);
+                    audioPlayer.src = url;
+                    audioContainer.style.display = 'block';
+                    audioBlob = file; // For re-saving
+                    loadedCount++;
+                }
+                
+                // 3. Text (Memo import)
+                else if (file.name.toLowerCase().endsWith('.txt')) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        // Append text to memo area nicely
+                        const text = e.target.result;
+                        const lines = text.split('\n');
+                        lines.forEach(line => {
+                            if(line.trim() !== "") {
+                                // Create memo-line for each text line
+                                const div = document.createElement('div');
+                                div.className = 'memo-line';
+                                div.setAttribute('data-time', 0); // Default time 0
+                                div.setAttribute('data-time-fmt', "00:00");
+                                div.innerText = line;
+                                div.onclick = () => seekTo(0);
+                                memoArea.appendChild(div);
+                            }
+                        });
+                        loadedCount++;
+                    };
+                    reader.readAsText(file);
+                }
             }
+            // Clear input so same files can be selected again
+            input.value = ''; 
         }
 
         function updateUI(status) {
