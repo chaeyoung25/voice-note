@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Voice Note V26</title>
+    <title>Voice Note V27</title>
     <style>
         /* [Apple Style Variables] */
         :root {
@@ -33,6 +33,7 @@
             --btn-util-bg: #DCD3FF;   --btn-util-text: #4A3F6B;
             --btn-save-bg: #A0C4FF;   --btn-save-text: #2B4570;
             --btn-txt-bg: #FFD6E0;    --btn-txt-text: #8B4055;
+            --btn-audio-bg: #FFCC80;  --btn-audio-text: #663C00; /* 오디오 로드 버튼 색상 */
         }
 
         /* [Dark Mode] */
@@ -61,6 +62,7 @@
             --btn-util-bg: #685E8A;   --btn-util-text: #FFFFFF;
             --btn-save-bg: #4A6FA5;   --btn-save-text: #FFFFFF;
             --btn-txt-bg: #A65D6E;    --btn-txt-text: #FFFFFF;
+            --btn-audio-bg: #B38F00;  --btn-audio-text: #FFFFFF;
         }
 
         body { 
@@ -111,6 +113,7 @@
         .btn-save { background-color: var(--btn-save-bg); color: var(--btn-save-text); }
         .btn-util { background-color: var(--btn-util-bg); color: var(--btn-util-text); }
         .btn-txt { background-color: var(--btn-txt-bg); color: var(--btn-txt-text); }
+        .btn-audio-load { background-color: var(--btn-audio-bg); color: var(--btn-audio-text); }
         
         .hidden { display: none !important; }
 
@@ -195,15 +198,18 @@
         }
         .history-item:hover { background: var(--memo-hover); }
 
-        #audioContainer { display: none; }
-        audio { width: 100%; outline: none; }
+        /* Audio Container - Visible when loaded */
+        #audioContainer { display: none; margin-top: 15px; width: 100%; }
+        audio { width: 100%; outline: none; border-radius: 10px; }
+        
         #fileInput { display: none; }
+        #audioInput { display: none; }
     </style>
 </head>
 <body>
 
     <header>
-        <h2>🎙️ Voice Note V26</h2>
+        <h2>🎙️ Voice Note V27</h2>
         <div class="header-right">
             <div id="timer" class="timer">00:00</div>
             <button class="btn-theme" onclick="toggleTheme()" id="btnTheme">🌙 Dark</button>
@@ -211,18 +217,10 @@
     </header>
 
     <div class="controls">
-        <button id="btnStart" class="control-btn btn-start" onclick="startRecord()">
-            <span>⏺</span> Start
-        </button>
-        <button id="btnPause" class="control-btn btn-pause hidden" onclick="pauseRecord()">
-            <span>⏸</span> Pause
-        </button>
-        <button id="btnResume" class="control-btn btn-start hidden" onclick="resumeRecord()">
-            <span>▶</span> Resume
-        </button>
-        <button id="btnStop" class="control-btn btn-stop hidden" onclick="stopRecord()">
-            <span>⏹</span> Stop
-        </button>
+        <button id="btnStart" class="control-btn btn-start" onclick="startRecord()"><span>⏺</span> Start</button>
+        <button id="btnPause" class="control-btn btn-pause hidden" onclick="pauseRecord()"><span>⏸</span> Pause</button>
+        <button id="btnResume" class="control-btn btn-start hidden" onclick="resumeRecord()"><span>▶</span> Resume</button>
+        <button id="btnStop" class="control-btn btn-stop hidden" onclick="stopRecord()"><span>⏹</span> Stop</button>
         
         <label class="toggle-wrapper">
             <div class="switch">
@@ -235,14 +233,17 @@
         <div style="width:20px;"></div>
         
         <button id="btnSave" class="control-btn btn-save" onclick="saveProject()">💾 Project</button>
-        <button class="control-btn btn-txt" onclick="saveTranscriptText()">📄 Script.txt</button>
-        <button class="control-btn btn-txt" onclick="saveMemoText()">📝 Memo.txt</button>
+        <button class="control-btn btn-txt" onclick="saveTranscriptText()">📄 Script</button>
+        <button class="control-btn btn-txt" onclick="saveMemoText()">📝 Memo</button>
         
         <div style="width:10px;"></div>
         
-        <button class="control-btn btn-util" onclick="document.getElementById('fileInput').click()">📂 Load</button>
+        <button class="control-btn btn-util" onclick="document.getElementById('fileInput').click()">📂 1. Load JSON</button>
+        <button class="control-btn btn-audio-load" onclick="document.getElementById('audioInput').click()">🎵 2. Load Audio</button>
         <button class="control-btn btn-util" onclick="newSession()">📄 New</button>
+        
         <input type="file" id="fileInput" accept=".json" onchange="loadProject(this)">
+        <input type="file" id="audioInput" accept="audio/*" onchange="loadAudioFile(this)">
     </div>
 
     <div id="audioContainer">
@@ -259,8 +260,9 @@
             <div id="transcriptScroll">
                 <div id="finalContainer">
                     <div style="color:var(--text-ghost); text-align:center; margin-top:80px; font-weight: 500;">
-                        Press <strong>Start</strong> to begin.<br>
-                        V26: Sync Fixed (2s Buffer)
+                        1. Press <strong>Load JSON</strong> to restore text.<br>
+                        2. Press <strong>Load Audio</strong> to restore sound.<br>
+                        Or press <strong>Start</strong> to record new.
                     </div>
                 </div>
                 <div id="interimText"></div>
@@ -312,9 +314,7 @@
         let isPaused = false;
         let sessionHistory = []; 
         let lastInterim = "";
-        
-        // [V26] 고스트 텍스트가 처음 나타난 시간을 기록하는 전역 변수
-        let currentGhostStartTime = null;
+        let sentenceStartMap = {}; 
 
         const finalContainer = document.getElementById('finalContainer');
         const interimText = document.getElementById('interimText');
@@ -344,35 +344,18 @@
                 let interimTranscript = '';
                 let currentRealTime = (Date.now() - startTime - pausedTime) / 1000;
 
-                // [V26 Core] 고스트 텍스트가 시작되는 '그 순간'의 시간을 잡는다.
-                // interimTranscript가 있다는 것은 말이 시작되었다는 뜻.
-                // currentGhostStartTime이 null일 때만(즉, 문장의 시작점일 때만) 시간을 기록한다.
-                
-                // 먼저 interimTranscript를 추출
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (!event.results[i].isFinal) {
-                        interimTranscript += event.results[i][0].transcript;
-                    }
-                }
-
-                // 말이 시작되었는데 시작 시간이 안 잡혀있다면 지금 잡는다.
-                if (interimTranscript.length > 0 && currentGhostStartTime === null) {
-                    currentGhostStartTime = Math.max(0, currentRealTime - 2.0); // 2초 전으로 되감기 (Safety)
-                }
-
-                if(finalContainer.innerText.includes('Press Start')) finalContainer.innerHTML = '';
-
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
                     const transcript = event.results[i][0].transcript;
-                    
+                    if (!sentenceStartMap[i]) {
+                        sentenceStartMap[i] = Math.max(0, currentRealTime - 1.0);
+                    }
                     if (event.results[i].isFinal) {
-                        // [V26] 잡아둔 시작 시간을 사용한다. 만약 없으면 현재 시간 - 2초.
-                        let finalTime = currentGhostStartTime !== null ? currentGhostStartTime : Math.max(0, currentRealTime - 2.0);
-                        
+                        let finalTime = sentenceStartMap[i];
                         addFinalRow(finalTime, transcript);
-                        
                         lastInterim = "";
-                        currentGhostStartTime = null; // 초기화 (다음 문장 대기)
+                        delete sentenceStartMap[i];
+                    } else {
+                        interimTranscript += transcript;
                     }
                 }
                 interimText.innerText = interimTranscript;
@@ -385,10 +368,9 @@
 
             recognition.onend = () => {
                 if (lastInterim.trim() !== "") {
-                    // 비상 종료 시에도 잡아둔 시간이 있으면 사용
-                    let finalTime = currentGhostStartTime !== null ? currentGhostStartTime : Math.max(0, (Date.now() - startTime - pausedTime) / 1000 - 2.0);
-                    addFinalRow(finalTime, lastInterim);
-                    lastInterim = ""; interimText.innerText = ""; currentGhostStartTime = null;
+                    let currentRealTime = (Date.now() - startTime - pausedTime) / 1000;
+                    addFinalRow(currentRealTime - 1.0, lastInterim); 
+                    lastInterim = ""; interimText.innerText = "";
                 }
                 if (isRecording && !isPaused) {
                     try { recognition.start(); } catch(e) {}
@@ -419,7 +401,6 @@
             interimText.innerText = ''; 
         }
 
-        // --- Force Finalize (Enter Key) ---
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Enter' && document.activeElement !== memoArea) {
                 if (isRecording && !isPaused && interimText.innerText.trim() !== '') {
@@ -431,20 +412,15 @@
         function forceFinalize() {
             const ghost = interimText.innerText;
             if (!ghost) return;
-            
             let currentRealTime = (Date.now() - startTime - pausedTime) / 1000;
-            // 강제 종료 시에도 잡아둔 시작 시간 사용
-            let finalTime = currentGhostStartTime !== null ? currentGhostStartTime : Math.max(0, currentRealTime - 2.0);
-            
-            addFinalRow(finalTime, ghost);
-            interimText.innerText = ''; lastInterim = ""; currentGhostStartTime = null;
+            addFinalRow(currentRealTime - 1.0, ghost); 
+            interimText.innerText = ''; lastInterim = ""; sentenceStartMap = {};
             recognition.abort(); 
         }
 
         function scrollUp() { transcriptScroll.scrollBy({ top: -150, behavior: 'smooth' }); autoScrollCheck.checked = false; }
         function scrollDown() { transcriptScroll.scrollBy({ top: 150, behavior: 'smooth' }); }
 
-        // --- Memo Logic ---
         memoArea.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault(); 
@@ -551,7 +527,7 @@
         async function startRecord() {
             if (finalContainer.innerText.length > 20 && !finalContainer.innerText.includes('Press Start')) { addToHistory(); }
             finalContainer.innerHTML = ''; interimText.innerText = '';
-            memoArea.innerHTML = ''; insertCleanLine(0); currentGhostStartTime = null;
+            memoArea.innerHTML = ''; insertCleanLine(0); sentenceStartMap = {};
             audioChunks = []; audioBlob = null; audioContainer.style.display = 'none';
             startTime = Date.now(); pausedTime = 0;
             isRecording = true; isPaused = false;
@@ -645,14 +621,13 @@
         function newSession() {
             if(confirm("Start New Session?")) {
                 if(isRecording) stopRecord(); else addToHistory(); 
-                finalContainer.innerHTML = ''; interimText.innerText = ''; memoArea.innerHTML = ''; lastInterim = ""; currentGhostStartTime = null;
+                finalContainer.innerHTML = ''; interimText.innerText = ''; memoArea.innerHTML = ''; lastInterim = ""; sentenceStartMap = {};
                 audioPlayer.src = ''; audioContainer.style.display = 'none'; timerDisplay.innerText = "00:00"; 
                 finalContainer.innerHTML = '<div style="color:var(--text-ghost); text-align:center; margin-top:60px;">New Session Ready</div>';
                 insertCleanLine(0);
             }
         }
 
-        // [New: Text Save Logic]
         function saveTranscriptText() {
             let content = "";
             const rows = finalContainer.querySelectorAll('.row');
@@ -667,9 +642,7 @@
         function saveMemoText() {
             let content = "";
             const lines = memoArea.querySelectorAll('.memo-line');
-            lines.forEach(line => {
-                content += line.innerText + "\n";
-            });
+            lines.forEach(line => { content += line.innerText + "\n"; });
             downloadFile(content, `Memo_${getDateStr()}.txt`, 'text/plain');
         }
 
@@ -684,16 +657,34 @@
             }
         }
 
+        // [V27 Load Logic]
         function loadProject(input) {
             const reader = new FileReader();
             reader.onload = (e) => {
                 const data = JSON.parse(e.target.result);
+                // 1. Memo Restore (HTML)
                 memoArea.innerHTML = data.memoHTML;
-                finalContainer.innerHTML = ''; interimText.innerText = '';
+                attachMemoEvents(); // Re-bind click events
+                
+                // 2. Transcript Restore (Re-build rows)
+                finalContainer.innerHTML = '';
                 data.scripts.forEach(item => { addFinalRow(parseFloat(item.time), item.text); });
-                attachMemoEvents();
+                
+                alert("Project Loaded! Now please load the Audio file.");
             };
             reader.readAsText(input.files[0]);
+        }
+
+        // [V27 Audio Load Logic]
+        function loadAudioFile(input) {
+            const file = input.files[0];
+            if(file) {
+                const url = URL.createObjectURL(file);
+                audioPlayer.src = url;
+                audioContainer.style.display = 'block';
+                // Also update global audioBlob for re-saving if needed
+                audioBlob = file; 
+            }
         }
 
         function updateUI(status) {
