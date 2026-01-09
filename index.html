@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Voice Note V30</title>
+    <title>Voice Note V29</title>
     <style>
         /* [Apple Style Variables] */
         :root {
@@ -206,7 +206,7 @@
 <body>
 
     <header>
-        <h2>🎙️ Voice Note V30</h2>
+        <h2>🎙️ Voice Note V29</h2>
         <div class="header-right">
             <div id="timer" class="timer">00:00</div>
             <button class="btn-theme" onclick="toggleTheme()" id="btnTheme">🌙 Dark</button>
@@ -256,7 +256,7 @@
                 <div id="finalContainer">
                     <div style="color:var(--text-ghost); text-align:center; margin-top:80px; font-weight: 500;">
                         Press <strong>Start</strong> to begin.<br>
-                        V30: Ultra Safe Sync (-20s)
+                        V29: 8s Buffer Time Sync
                     </div>
                 </div>
                 <div id="interimText"></div>
@@ -341,8 +341,8 @@
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
                     const transcript = event.results[i][0].transcript;
                     if (!sentenceStartMap[i]) {
-                        // [V30] 20초 전으로 타임머신 (요청 반영)
-                        sentenceStartMap[i] = Math.max(0, currentRealTime - 20.0);
+                        // [V29] 8초 전으로 타임머신 (여유 공간 확보)
+                        sentenceStartMap[i] = Math.max(0, currentRealTime - 8.0);
                     }
                     if (event.results[i].isFinal) {
                         let finalTime = sentenceStartMap[i];
@@ -364,8 +364,8 @@
             recognition.onend = () => {
                 if (lastInterim.trim() !== "") {
                     let currentRealTime = (Date.now() - startTime - pausedTime) / 1000;
-                    // 비상 종료 시에도 20초 전
-                    addFinalRow(Math.max(0, currentRealTime - 20.0), lastInterim); 
+                    // 비상 종료 시에도 8초 전
+                    addFinalRow(Math.max(0, currentRealTime - 8.0), lastInterim); 
                     lastInterim = ""; interimText.innerText = "";
                 }
                 if (isRecording && !isPaused) {
@@ -409,8 +409,8 @@
             const ghost = interimText.innerText;
             if (!ghost) return;
             let currentRealTime = (Date.now() - startTime - pausedTime) / 1000;
-            // 강제 종료 시에도 20초 전
-            addFinalRow(Math.max(0, currentRealTime - 20.0), ghost); 
+            // 강제 종료 시에도 8초 전
+            addFinalRow(Math.max(0, currentRealTime - 8.0), ghost); 
             interimText.innerText = ''; lastInterim = ""; sentenceStartMap = {};
             recognition.abort(); 
         }
