@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Voice Note V22</title>
+    <style>
+        /* [Apple Style Variables] */
+        :root {
+            --bg-body: #F5F5F7;       
+            --bg-panel: #FFFFFF;      
+            --bg-header: rgba(255, 255, 255, 0.8); 
+            
+            --text-main: #1D1D1F;     
+            --text-sub: #86868B;      
+            --text-ghost: #C7C7CC;    
+            
+            --border: #E5E5EA;        
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+            --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
+            
+            --highlight: #FFF8C5;     
+            --highlight-line: #F5D34B;
+            --tag-bg: #E4F2FF;        
+            --tag-text: #007AFF;      
+            --memo-hover: #F2F2F7;
+
+            /* Pastel Buttons */
+            --btn-start-bg: #A8E6CF;  --btn-start-text: #2D5A45;
+            --btn-pause-bg: #FDFFB6;  --btn-pause-text: #6B6B38;
+            --btn-stop-bg: #FFD3B6;   --btn-stop-text: #7A4633;
+            --btn-util-bg: #DCD3FF;   --btn-util-text: #4A3F6B;
+            --btn-save-bg: #A0C4FF;   --btn-save-text: #2B4570;
+        }
+
+        /* [Dark Mode] */
+        body.dark-mode {
+            --bg-body: #000000;       
+            --bg-panel: #1C1C1E;      
+            --bg-header: rgba(28, 28, 30, 0.8);
+            
+            --text-main: #F5F5F7;     
+            --text-sub: #98989D;      
+            --text-ghost: #48484A;    
+            
+            --border: #38383A;        
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+            --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
+            
+            --highlight: #3A3A3C;     
+            --highlight-line: #FFD60A;
+            --tag-bg: #0A84FF;        
+            --tag-text: #FFFFFF;
+            --memo-hover: #2C2C2E;
+
+            --btn-start-bg: #598F78;  --btn-start-text: #FFFFFF;
+            --btn-pause-bg: #8F8F59;  --btn-pause-text: #FFFFFF;
+            --btn-stop-bg: #A66E5C;   --btn-stop-text: #FFFFFF;
+            --btn-util-bg: #685E8A;   --btn-util-text: #FFFFFF;
+            --btn-save-bg: #4A6FA5;   --btn-save-text: #FFFFFF;
+        }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; 
+            margin: 0; padding: 30px; 
+            background-color: var(--bg-body); 
+            color: var(--text-main); 
+            height: 100vh; box-sizing: border-box; 
+            display: flex; flex-direction: column; 
+            transition: background-color 0.4s ease, color 0.4s ease; 
+        }
+        
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        h2 { 
+            margin: 0; font-size: 1.8rem; font-weight: 700; letter-spacing: -0.8px; 
+            background: linear-gradient(135deg, var(--text-main) 0%, var(--text-sub) 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .header-right { display: flex; align-items: center; gap: 20px; }
+        .timer { font-size: 1.1rem; font-weight: 600; color: var(--text-sub); font-variant-numeric: tabular-nums; letter-spacing: -0.5px; }
+        
+        .btn-theme { 
+            background: rgba(128, 128, 128, 0.1); border: none; color: var(--text-main); 
+            padding: 8px 16px; border-radius: 20px; cursor: pointer; 
+            font-size: 0.85rem; font-weight: 600; transition: 0.3s; backdrop-filter: blur(10px);
+        }
+        .btn-theme:hover { background: rgba(128, 128, 128, 0.2); }
+
+        .controls { 
+            background: var(--bg-panel); padding: 15px 25px; border-radius: 24px; 
+            box-shadow: var(--shadow-md); display: flex; gap: 12px; flex-wrap: wrap; 
+            justify-content: center; align-items: center; margin-bottom: 25px; 
+            border: 1px solid var(--border);
+        }
+        
+        button.control-btn { 
+            padding: 12px 24px; font-size: 0.95rem; border: none; border-radius: 30px; 
+            font-weight: 700; cursor: pointer; transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); 
+            display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+        button.control-btn:hover { transform: translateY(-2px); filter: brightness(0.95); box-shadow: 0 6px 15px rgba(0,0,0,0.1); }
+        button.control-btn:active { transform: scale(0.95); }
+        
+        .btn-start { background-color: var(--btn-start-bg); color: var(--btn-start-text); }
+        .btn-pause { background-color: var(--btn-pause-bg); color: var(--btn-pause-text); }
+        .btn-stop { background-color: var(--btn-stop-bg); color: var(--btn-stop-text); }
+        .btn-save { background-color: var(--btn-save-bg); color: var(--btn-save-text); }
+        .btn-util { background-color: var(--btn-util-bg); color: var(--btn-util-text); }
+        .hidden { display: none !important; }
+
+        .toggle-wrapper { display: flex; align-items: center; gap: 10px; margin-left: 15px; font-size: 0.9rem; color: var(--text-sub); font-weight: 600; cursor: pointer; }
+        .switch { position: relative; display: inline-block; width: 44px; height: 26px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #E9E9EA; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        input:checked + .slider { background-color: #34C759; }
+        input:checked + .slider:before { transform: translateX(18px); }
+
+        .workspace { flex: 1; display: flex; gap: 25px; overflow: hidden; flex-direction: column; }
+        @media (min-width: 900px) { .workspace { flex-direction: row; } }
+
+        .panel { 
+            flex: 1; background: var(--bg-panel); border-radius: 24px; 
+            display: flex; flex-direction: column; border: 1px solid var(--border); 
+            overflow: hidden; position: relative; box-shadow: var(--shadow-sm); transition: 0.3s;
+        }
+        .panel-head { 
+            padding: 18px 24px; background: var(--bg-panel); 
+            border-bottom: 1px solid var(--border); font-weight: 700; 
+            color: var(--text-main); font-size: 1rem; letter-spacing: -0.3px;
+            display: flex; justify-content: space-between; 
+        }
+        
+        .scroll-controls { position: absolute; bottom: 25px; right: 25px; display: flex; flex-direction: column; gap: 10px; z-index: 10; }
+        .scroll-btn {
+            background: rgba(255,255,255,0.8); backdrop-filter: blur(10px); color: var(--text-main);
+            width: 44px; height: 44px; border-radius: 50%; display: flex; justify-content: center; align-items: center;
+            font-size: 1.1rem; cursor: pointer; border: 1px solid var(--border);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: 0.2s;
+        }
+        .scroll-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0,0,0,0.15); }
+        body.dark-mode .scroll-btn { background: rgba(40,40,40,0.8); }
+
+        #transcriptScroll { flex: 1; overflow-y: auto; padding: 30px; display: flex; flex-direction: column; scroll-behavior: smooth; }
+        .padding-bottom-spacer { height: 50vh; pointer-events: none; flex-shrink: 0; }
+
+        .row { display: flex; margin-bottom: 15px; border-bottom: 1px solid transparent; padding-bottom: 8px; animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .time-tag { 
+            background: var(--tag-bg); color: var(--tag-text); font-size: 0.7rem; 
+            padding: 4px 8px; border-radius: 12px; margin-right: 12px; height: fit-content; 
+            cursor: pointer; white-space: nowrap; margin-top: 4px; font-weight: 700; letter-spacing: 0.5px;
+        }
+        .text-content { 
+            flex: 1; outline: none; line-height: 1.7; color: var(--text-main); 
+            font-size: 1.15rem; font-weight: 400; letter-spacing: -0.2px;
+        }
+        .text-content:focus { background: var(--highlight); border-radius: 4px; }
+
+        #interimText { 
+            color: var(--text-ghost); font-style: normal; padding-left: 55px; 
+            margin-bottom: 15px; font-size: 1.15rem; min-height: 24px; opacity: 0.8;
+        }
+
+        #memoArea { 
+            flex: 1; border: none; padding: 30px; overflow-y: auto; 
+            background: var(--bg-panel); color: var(--text-main); outline: none; 
+            font-size: 1.1rem; display: block; 
+        }
+        #memoArea div, #memoArea p, #memoArea span, #memoArea br { margin: 0 !important; padding: 0 !important; line-height: 1.5 !important; min-height: 1.5em; }
+        .memo-line { display: block; width: 100%; margin: 0 !important; padding: 0 4px !important; border-radius: 2px; transition: background 0.2s; cursor: text; border: 1px solid transparent; }
+        .memo-line:hover { background-color: var(--memo-hover); cursor: pointer; position: relative; }
+        .memo-line:hover::before { 
+            content: "⏱ " attr(data-time-fmt); position: absolute; left: -65px; top: 2px; 
+            font-size: 0.7rem; color: var(--text-sub); font-weight: 600;
+            background: var(--bg-body); padding: 3px 8px; border-radius: 10px; pointer-events: none; 
+        }
+
+        .history-section { 
+            height: 120px; background: var(--bg-panel); margin-top: 20px; 
+            border-radius: 20px; padding: 20px; overflow-y: auto; 
+            border: 1px solid var(--border); display: none; box-shadow: var(--shadow-sm);
+        }
+        .history-item { 
+            padding: 12px; border-bottom: 1px solid var(--border); 
+            display: flex; justify-content: space-between; cursor: pointer; 
+            align-items: center; color: var(--text-main); border-radius: 10px; transition: 0.2s;
+        }
+        .history-item:hover { background: var(--memo-hover); }
+
+        #audioContainer { display: none; }
+        audio { width: 100%; outline: none; }
+        #fileInput { display: none; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h2>🎙️ Voice Note</h2>
+        <div class="header-right">
+            <div id="timer" class="timer">00:00</div>
+            <button class="btn-theme" onclick="toggleTheme()" id="btnTheme">🌙 Dark</button>
+        </div>
+    </header>
+
+    <div class="controls">
+        <button id="btnStart" class="control-btn btn-start" onclick="startRecord()">
+            <span>⏺</span> Start
+        </button>
+        <button id="btnPause" class="control-btn btn-pause hidden" onclick="pauseRecord()">
+            <span>⏸</span> Pause
+        </button>
+        <button id="btnResume" class="control-btn btn-start hidden" onclick="resumeRecord()">
+            <span>▶</span> Resume
+        </button>
+        <button id="btnStop" class="control-btn btn-stop hidden" onclick="stopRecord()">
+            <span>⏹</span> Stop
+        </button>
+        
+        <label class="toggle-wrapper">
+            <div class="switch">
+                <input type="checkbox" id="autoScrollCheck" checked>
+                <span class="slider"></span>
+            </div>
+            Auto Scroll
+        </label>
+        
+        <div style="width:20px;"></div>
+        
+        <button id="btnSave" class="control-btn btn-save" onclick="saveProject()">💾 Save</button>
+        <button class="control-btn btn-util" onclick="document.getElementById('fileInput').click()">📂 Load</button>
+        <button class="control-btn btn-util" onclick="newSession()">📄 New</button>
+        <input type="file" id="fileInput" accept=".json" onchange="loadProject(this)">
+    </div>
+
+    <div id="audioContainer">
+        <audio id="audioPlayer" controls></audio>
+    </div>
+
+    <div class="workspace">
+        <div class="panel">
+            <div class="panel-head">
+                <span>Transcript (Enter to cut)</span>
+                <span id="recStatus" style="font-size: 0.85rem; color: var(--text-sub); font-weight: 500;">Ready</span>
+            </div>
+            
+            <div id="transcriptScroll">
+                <div id="finalContainer">
+                    <div style="color:var(--text-ghost); text-align:center; margin-top:80px; font-weight: 500;">
+                        Press <strong>Start</strong> to begin.<br>
+                        Beautiful design, powerful features.
+                    </div>
+                </div>
+                <div id="interimText"></div>
+                <div class="padding-bottom-spacer"></div>
+
+                <div class="scroll-controls">
+                    <div class="scroll-btn" onclick="scrollUp()" title="Up">↑</div>
+                    <div class="scroll-btn" onclick="scrollDown()" title="Down">↓</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-head">
+                <span>Invisible Link Memo</span>
+            </div>
+            <div id="memoArea" contenteditable="true" placeholder="Type your notes...">
+                <div class="memo-line" data-time="0">메모를 입력하세요...</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="history-section" id="historySection">
+        <div style="font-weight:700; margin-bottom:15px; color:var(--text-sub); font-size:0.9rem; text-transform: uppercase; letter-spacing: 1px;">
+            History Storage
+        </div>
+        <div id="historyList"></div>
+    </div>
+
+    <script>
+        let isDarkMode = false;
+        function toggleTheme() {
+            const body = document.body;
+            const btn = document.getElementById('btnTheme');
+            isDarkMode = !isDarkMode;
+            if(isDarkMode) { body.classList.add('dark-mode'); btn.innerText = "☀️ Light"; } 
+            else { body.classList.remove('dark-mode'); btn.innerText = "🌙 Dark"; }
+        }
+
+        let recognition;
+        let mediaRecorder;
+        let audioChunks = [];
+        let audioBlob = null;
+        let startTime = 0;
+        let pausedTime = 0;
+        let pauseStart = 0;
+        let timerInterval;
+        let isRecording = false;
+        let isPaused = false;
+        let sessionHistory = []; 
+        let lastInterim = "";
+
+        const finalContainer = document.getElementById('finalContainer');
+        const interimText = document.getElementById('interimText');
+        const transcriptScroll = document.getElementById('transcriptScroll');
+        const timerDisplay = document.getElementById('timer');
+        const recStatus = document.getElementById('recStatus');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const audioContainer = document.getElementById('audioContainer');
+        const historySection = document.getElementById('historySection');
+        const historyList = document.getElementById('historyList');
+        const btnStart = document.getElementById('btnStart');
+        const btnPause = document.getElementById('btnPause');
+        const btnResume = document.getElementById('btnResume');
+        const btnStop = document.getElementById('btnStop');
+        const autoScrollCheck = document.getElementById('autoScrollCheck');
+        const memoArea = document.getElementById('memoArea');
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = true; 
+            recognition.interimResults = true; 
+            recognition.lang = 'ko-KR';
+
+            recognition.onresult = (event) => {
+                let interimTranscript = '';
+                let currentRealTime = (Date.now() - startTime - pausedTime) / 1000;
+
+                if(finalContainer.innerText.includes('Press Start')) finalContainer.innerHTML = '';
+
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        addFinalRow(currentRealTime, transcript);
+                        lastInterim = "";
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+                interimText.innerText = interimTranscript;
+                lastInterim = interimTranscript;
+                
+                if (autoScrollCheck.checked) {
+                    transcriptScroll.scrollTop = transcriptScroll.scrollHeight;
+                }
+            };
+
+            recognition.onend = () => {
+                if (lastInterim.trim() !== "") {
+                    let currentRealTime = (Date.now() - startTime - pausedTime) / 1000;
+                    addFinalRow(currentRealTime, lastInterim);
+                    lastInterim = ""; interimText.innerText = "";
+                }
+                
+                // [Resume Check] 멈춤 상태가 아니고, 녹음 중이라면 재시작
+                if (isRecording && !isPaused) {
+                    try { recognition.start(); } catch(e) { console.log("Re-start check"); }
+                }
+            };
+        } else {
+            alert("Use Chrome browser.");
+        }
+
+        function addFinalRow(time, text) {
+            const row = document.createElement('div');
+            row.className = 'row';
+            row.setAttribute('data-time', time); 
+            
+            const timeTag = document.createElement('div');
+            timeTag.className = 'time-tag';
+            timeTag.innerText = formatTime(time);
+            timeTag.onclick = () => seekTo(time);
+
+            const content = document.createElement('div');
+            content.className = 'text-content';
+            content.contentEditable = true; 
+            content.innerText = text;
+
+            row.appendChild(timeTag);
+            row.appendChild(content);
+            finalContainer.appendChild(row);
+            interimText.innerText = ''; 
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && document.activeElement !== memoArea) {
+                if (isRecording && !isPaused && interimText.innerText.trim() !== '') {
+                    e.preventDefault(); forceFinalize();    
+                }
+            }
+        });
+
+        function forceFinalize() {
+            const ghost = interimText.innerText;
+            if (!ghost) return;
+            let currentRealTime = (Date.now() - startTime - pausedTime) / 1000;
+            addFinalRow(currentRealTime, ghost);
+            interimText.innerText = ''; lastInterim = "";
+            recognition.abort(); 
+        }
+
+        function scrollUp() { transcriptScroll.scrollBy({ top: -150, behavior: 'smooth' }); autoScrollCheck.checked = false; }
+        function scrollDown() { transcriptScroll.scrollBy({ top: 150, behavior: 'smooth' }); }
+
+        memoArea.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault(); 
+                let time = 0;
+                if (isRecording && !isPaused) {
+                    time = (Date.now() - startTime - pausedTime) / 1000;
+                }
+
+                const selection = window.getSelection();
+                if (!selection.rangeCount) return;
+                const range = selection.getRangeAt(0);
+
+                let currentBlock = range.commonAncestorContainer;
+                while (currentBlock && (currentBlock.nodeType !== 1 || !currentBlock.classList.contains('memo-line'))) {
+                    if (currentBlock === memoArea) break;
+                    currentBlock = currentBlock.parentNode;
+                }
+
+                const newLine = document.createElement('div');
+                newLine.className = 'memo-line';
+                newLine.setAttribute('data-time', time);
+                newLine.setAttribute('data-time-fmt', formatTime(time));
+                newLine.onclick = (e) => {
+                    if (window.getSelection().toString().length > 0) return;
+                    seekTo(time);
+                };
+
+                if (currentBlock && currentBlock.classList.contains('memo-line')) {
+                    range.setEndAfter(currentBlock.lastChild || currentBlock);
+                    const content = range.extractContents();
+                    newLine.appendChild(content);
+                    if (newLine.innerHTML.trim() === '') newLine.innerHTML = '<br>';
+                    if (currentBlock.innerHTML.trim() === '') currentBlock.innerHTML = '<br>';
+                    currentBlock.after(newLine);
+                } else {
+                    newLine.innerHTML = '<br>';
+                    memoArea.appendChild(newLine);
+                }
+
+                const newRange = document.createRange();
+                newRange.setStart(newLine, 0);
+                newRange.collapse(true);
+                selection.removeAllRanges();
+                selection.addRange(newRange);
+                newLine.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        });
+
+        memoArea.addEventListener('input', function(e) {
+            if (memoArea.innerHTML.trim() === '' || memoArea.innerHTML === '<br>') {
+                memoArea.innerHTML = '';
+                insertCleanLine(0);
+                const range = document.createRange();
+                const sel = window.getSelection();
+                range.setStart(memoArea.firstChild, 0);
+                range.collapse(true);
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
+        });
+
+        function insertCleanLine(time) {
+            const div = document.createElement('div');
+            div.className = 'memo-line';
+            div.setAttribute('data-time', time);
+            div.setAttribute('data-time-fmt', formatTime(time)); 
+            div.innerHTML = '<br>';
+            div.onclick = function(e) {
+                if (window.getSelection().toString().length > 0) return;
+                seekTo(time);
+            };
+            memoArea.appendChild(div);
+        }
+        
+        function attachMemoEvents() {
+            const lines = memoArea.querySelectorAll('.memo-line');
+            lines.forEach(line => {
+                const t = parseFloat(line.getAttribute('data-time')) || 0;
+                line.setAttribute('data-time-fmt', formatTime(t));
+                line.onclick = (e) => {
+                    if (window.getSelection().toString().length > 0) return;
+                    seekTo(t);
+                }
+            });
+        }
+
+        function seekTo(time) {
+            if(audioPlayer.src) { audioPlayer.currentTime = time; audioPlayer.play(); }
+            const rows = finalContainer.querySelectorAll('.row');
+            let targetRow = null;
+            let minDiff = 999999;
+            rows.forEach(row => {
+                const rowTime = parseFloat(row.getAttribute('data-time'));
+                const diff = Math.abs(rowTime - time);
+                if(diff < minDiff) { minDiff = diff; targetRow = row; }
+            });
+            if(targetRow) {
+                targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                targetRow.style.backgroundColor = 'var(--highlight)';
+                setTimeout(() => targetRow.style.backgroundColor = 'transparent', 1500);
+            }
+        }
+
+        async function startRecord() {
+            if (finalContainer.innerText.length > 20 && !finalContainer.innerText.includes('Press Start')) { addToHistory(); }
+            finalContainer.innerHTML = ''; interimText.innerText = '';
+            memoArea.innerHTML = ''; insertCleanLine(0); 
+            audioChunks = []; audioBlob = null; audioContainer.style.display = 'none';
+            startTime = Date.now(); pausedTime = 0;
+            isRecording = true; isPaused = false;
+            updateUI('recording'); startTimer();
+            if(navigator.mediaDevices) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                    mediaRecorder.onstop = () => {
+                        audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                        audioPlayer.src = URL.createObjectURL(audioBlob);
+                        audioContainer.style.display = 'block';
+                    };
+                    mediaRecorder.start();
+                } catch(e) {}
+            }
+            try { recognition.start(); } catch(e) {}
+        }
+
+        function pauseRecord() {
+            isPaused = true;
+            pauseStart = Date.now();
+            if(mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.pause();
+            
+            // [V22 Fix] 멈출 때 인식기 종료 (나중에 켤 때 충돌 방지)
+            recognition.stop();
+            
+            clearInterval(timerInterval);
+            updateUI('paused');
+        }
+
+        function resumeRecord() {
+            isPaused = false;
+            pausedTime += (Date.now() - pauseStart);
+            if(mediaRecorder && mediaRecorder.state === 'paused') mediaRecorder.resume();
+            
+            // [V22 Fix] 재시작 시도 (이미 켜져있어도 오류 안나게)
+            try { recognition.start(); } catch(e) { console.log("Resume start"); }
+            
+            startTimer();
+            updateUI('recording');
+        }
+
+        function stopRecord() {
+            isRecording = false; isPaused = false;
+            if (lastInterim.trim() !== "") forceFinalize();
+            if(mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+            recognition.stop();
+            clearInterval(timerInterval);
+            updateUI('stopped');
+            addToHistory();
+        }
+
+        function addToHistory() {
+            const contentHTML = finalContainer.innerHTML;
+            if(contentHTML.trim() === "" || contentHTML.includes('Press Start')) return;
+            const snapshot = {
+                id: Date.now(),
+                time: new Date().toLocaleTimeString(),
+                html: contentHTML,
+                memoHTML: memoArea.innerHTML,
+                audioSrc: audioBlob ? URL.createObjectURL(audioBlob) : null
+            };
+            sessionHistory.unshift(snapshot);
+            renderHistory();
+            historySection.style.display = 'block';
+        }
+
+        function renderHistory() {
+            historyList.innerHTML = '';
+            sessionHistory.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'history-item';
+                div.innerHTML = `<div><strong>${item.time}</strong> Record</div><div style="font-size:0.8rem; opacity:0.6;">Restore</div>`;
+                div.onclick = () => restoreSession(item.id);
+                historyList.appendChild(div);
+            });
+        }
+
+        function restoreSession(id) {
+            const item = sessionHistory.find(x => x.id === id);
+            if(!item) return;
+            if(confirm("Restore this history?")) {
+                finalContainer.innerHTML = item.html;
+                memoArea.innerHTML = item.memoHTML || "";
+                if(item.audioSrc) { audioPlayer.src = item.audioSrc; audioContainer.style.display = 'block'; }
+                const rows = finalContainer.querySelectorAll('.row');
+                rows.forEach(row => {
+                    const t = parseFloat(row.getAttribute('data-time'));
+                    row.querySelector('.time-tag').onclick = () => seekTo(t);
+                });
+                attachMemoEvents();
+            }
+        }
+
+        function newSession() {
+            if(confirm("Start New Session?")) {
+                if(isRecording) stopRecord(); else addToHistory(); 
+                finalContainer.innerHTML = ''; interimText.innerText = ''; memoArea.innerHTML = ''; lastInterim = "";
+                audioPlayer.src = ''; audioContainer.style.display = 'none'; timerDisplay.innerText = "00:00"; 
+                finalContainer.innerHTML = '<div style="color:var(--text-ghost); text-align:center; margin-top:60px;">New Session Ready</div>';
+                insertCleanLine(0);
+            }
+        }
+
+        function saveProject() {
+            const rows = document.querySelectorAll('.row');
+            let scripts = [];
+            rows.forEach(row => { scripts.push({ time: row.getAttribute('data-time'), text: row.querySelector('.text-content').innerText }); });
+            const data = { memoHTML: memoArea.innerHTML, scripts: scripts };
+            downloadFile(JSON.stringify(data), `Record_${getDateStr()}.json`, 'application/json');
+            if(audioBlob) {
+                const a = document.createElement('a'); a.href = URL.createObjectURL(audioBlob); a.download = `Audio_${getDateStr()}.wav`; a.click();
+            }
+        }
+
+        function loadProject(input) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const data = JSON.parse(e.target.result);
+                memoArea.innerHTML = data.memoHTML;
+                finalContainer.innerHTML = ''; interimText.innerText = '';
+                data.scripts.forEach(item => { addFinalRow(parseFloat(item.time), item.text); });
+                attachMemoEvents();
+            };
+            reader.readAsText(input.files[0]);
+        }
+
+        function updateUI(status) {
+            if(status === 'recording') {
+                btnStart.classList.add('hidden'); btnResume.classList.add('hidden'); btnPause.classList.remove('hidden'); btnStop.classList.remove('hidden');
+                recStatus.innerText = "Recording..."; recStatus.style.color = "#FF3B30";
+            } else if (status === 'paused') {
+                btnPause.classList.add('hidden'); btnResume.classList.remove('hidden');
+                recStatus.innerText = "Paused"; recStatus.style.color = "#FF9500";
+            } else {
+                btnStart.classList.remove('hidden'); btnPause.classList.add('hidden'); btnResume.classList.add('hidden'); btnStop.classList.add('hidden');
+                recStatus.innerText = "Ready"; recStatus.style.color = "var(--text-sub)"; interimText.innerText = '';
+            }
+        }
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                const total = Math.floor((Date.now() - startTime - pausedTime) / 1000);
+                timerDisplay.innerText = formatTime(total);
+            }, 1000);
+        }
+
+        function formatTime(sec) {
+            const m = Math.floor(sec / 60); const s = Math.floor(sec % 60);
+            return `${m < 10 ? '0' + m : m}:${s < 10 ? '0' + s : s}`;
+        }
+        function getDateStr() { return new Date().toISOString().slice(0,10).replace(/-/g,""); }
+        function downloadFile(content, fileName, mimeType) {
+            const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([content], { type: mimeType })); a.download = fileName; a.click();
+        }
+    </script>
+</body>
+</html>
