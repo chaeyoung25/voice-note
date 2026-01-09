@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Voice Note V31</title>
+    <title>Voice Note V32</title>
     <style>
         /* [Apple Style Variables] */
         :root {
@@ -30,8 +30,10 @@
             --btn-pause-bg: #FDFFB6;  --btn-pause-text: #6B6B38;
             --btn-stop-bg: #FFD3B6;   --btn-stop-text: #7A4633;
             
+            /* Save All Button */
             --btn-save-bg: #A0C4FF;   --btn-save-text: #2B4570;
-            --btn-txt-bg: #FFD6E0;    --btn-txt-text: #8B4055;
+            
+            /* Smart Load Button */
             --btn-load-bg: #DCD3FF;   --btn-load-text: #4A3F6B; 
         }
 
@@ -59,7 +61,6 @@
             --btn-pause-bg: #8F8F59;  --btn-pause-text: #FFFFFF;
             --btn-stop-bg: #A66E5C;   --btn-stop-text: #FFFFFF;
             --btn-save-bg: #4A6FA5;   --btn-save-text: #FFFFFF;
-            --btn-txt-bg: #A65D6E;    --btn-txt-text: #FFFFFF;
             --btn-load-bg: #685E8A;   --btn-load-text: #FFFFFF;
         }
 
@@ -109,7 +110,6 @@
         .btn-stop { background-color: var(--btn-stop-bg); color: var(--btn-stop-text); }
         
         .btn-save { background-color: var(--btn-save-bg); color: var(--btn-save-text); }
-        .btn-txt { background-color: var(--btn-txt-bg); color: var(--btn-txt-text); }
         .btn-load { background-color: var(--btn-load-bg); color: var(--btn-load-text); }
         
         .hidden { display: none !important; }
@@ -204,7 +204,7 @@
 <body>
 
     <header>
-        <h2>🎙️ Voice Note</h2>
+        <h2>🎙️ Voice Note V32</h2>
         <div class="header-right">
             <div id="timer" class="timer">00:00</div>
             <button class="btn-theme" onclick="toggleTheme()" id="btnTheme">🌙 Dark</button>
@@ -227,9 +227,7 @@
         
         <div style="width:20px;"></div>
         
-        <button id="btnSave" class="control-btn btn-save" onclick="saveProject()">💾 Project</button>
-        <button class="control-btn btn-txt" onclick="saveTranscriptText()">📄 Script</button>
-        <button class="control-btn btn-txt" onclick="saveMemoText()">📝 Memo</button>
+        <button id="btnSaveAll" class="control-btn btn-save" onclick="saveAll()">💾 Save All</button>
         
         <div style="width:10px;"></div>
         
@@ -334,7 +332,7 @@
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
                     const transcript = event.results[i][0].transcript;
                     if (!sentenceStartMap[i]) {
-                        // [V31 Fix] 10초 전으로 타임머신 (20초 -> 10초)
+                        // [Sync 10s]
                         sentenceStartMap[i] = Math.max(0, currentRealTime - 10.0);
                     }
                     if (event.results[i].isFinal) {
@@ -357,7 +355,6 @@
             recognition.onend = () => {
                 if (lastInterim.trim() !== "") {
                     let currentRealTime = (Date.now() - startTime - pausedTime) / 1000;
-                    // 비상 종료 시 10초 전
                     addFinalRow(Math.max(0, currentRealTime - 10.0), lastInterim); 
                     lastInterim = ""; interimText.innerText = "";
                 }
@@ -402,7 +399,6 @@
             const ghost = interimText.innerText;
             if (!ghost) return;
             let currentRealTime = (Date.now() - startTime - pausedTime) / 1000;
-            // 강제 종료 시 10초 전
             addFinalRow(Math.max(0, currentRealTime - 10.0), ghost); 
             interimText.innerText = ''; lastInterim = ""; sentenceStartMap = {};
             recognition.abort(); 
@@ -618,32 +614,38 @@
             }
         }
 
-        function saveTranscriptText() {
-            let content = "";
-            const rows = finalContainer.querySelectorAll('.row');
-            rows.forEach(row => {
-                const time = row.querySelector('.time-tag').innerText;
-                const text = row.querySelector('.text-content').innerText;
-                content += `[${time}] ${text}\n`;
-            });
-            downloadFile(content, `Script_${getDateStr()}.txt`, 'text/plain');
-        }
+        // [V32] Save All Logic
+        function saveAll() {
+            const dateStr = getDateStr();
 
-        function saveMemoText() {
-            let content = "";
-            const lines = memoArea.querySelectorAll('.memo-line');
-            lines.forEach(line => { content += line.innerText + "\n"; });
-            downloadFile(content, `Memo_${getDateStr()}.txt`, 'text/plain');
-        }
-
-        function saveProject() {
+            // 1. JSON
             const rows = document.querySelectorAll('.row');
             let scripts = [];
             rows.forEach(row => { scripts.push({ time: row.getAttribute('data-time'), text: row.querySelector('.text-content').innerText }); });
             const data = { memoHTML: memoArea.innerHTML, scripts: scripts };
-            downloadFile(JSON.stringify(data), `Record_${getDateStr()}.json`, 'application/json');
+            downloadFile(JSON.stringify(data), `Project_${dateStr}.json`, 'application/json');
+
+            // 2. Transcript TXT
+            let transcriptContent = "";
+            rows.forEach(row => {
+                const time = row.querySelector('.time-tag').innerText;
+                const text = row.querySelector('.text-content').innerText;
+                transcriptContent += `[${time}] ${text}\n`;
+            });
+            setTimeout(() => downloadFile(transcriptContent, `Script_${dateStr}.txt`, 'text/plain'), 100);
+
+            // 3. Memo TXT
+            let memoContent = "";
+            const lines = memoArea.querySelectorAll('.memo-line');
+            lines.forEach(line => { memoContent += line.innerText + "\n"; });
+            setTimeout(() => downloadFile(memoContent, `Memo_${dateStr}.txt`, 'text/plain'), 200);
+
+            // 4. Audio
             if(audioBlob) {
-                const a = document.createElement('a'); a.href = URL.createObjectURL(audioBlob); a.download = `Audio_${getDateStr()}.wav`; a.click();
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(audioBlob);
+                a.download = `Audio_${dateStr}.wav`;
+                setTimeout(() => a.click(), 300);
             }
         }
 
