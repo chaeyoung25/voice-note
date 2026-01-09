@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Voice Note V24</title>
+    <title>Voice Note V25</title>
     <style>
         /* [Apple Style Variables] */
         :root {
@@ -29,8 +29,10 @@
             --btn-start-bg: #A8E6CF;  --btn-start-text: #2D5A45;
             --btn-pause-bg: #FDFFB6;  --btn-pause-text: #6B6B38;
             --btn-stop-bg: #FFD3B6;   --btn-stop-text: #7A4633;
+            
             --btn-util-bg: #DCD3FF;   --btn-util-text: #4A3F6B;
             --btn-save-bg: #A0C4FF;   --btn-save-text: #2B4570;
+            --btn-txt-bg: #FFD6E0;    --btn-txt-text: #8B4055; /* New Color for TXT */
         }
 
         /* [Dark Mode] */
@@ -58,6 +60,7 @@
             --btn-stop-bg: #A66E5C;   --btn-stop-text: #FFFFFF;
             --btn-util-bg: #685E8A;   --btn-util-text: #FFFFFF;
             --btn-save-bg: #4A6FA5;   --btn-save-text: #FFFFFF;
+            --btn-txt-bg: #A65D6E;    --btn-txt-text: #FFFFFF;
         }
 
         body { 
@@ -94,9 +97,9 @@
         }
         
         button.control-btn { 
-            padding: 12px 24px; font-size: 0.95rem; border: none; border-radius: 30px; 
+            padding: 10px 20px; font-size: 0.9rem; border: none; border-radius: 30px; 
             font-weight: 700; cursor: pointer; transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); 
-            display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);
         }
         button.control-btn:hover { transform: translateY(-2px); filter: brightness(0.95); box-shadow: 0 6px 15px rgba(0,0,0,0.1); }
         button.control-btn:active { transform: scale(0.95); }
@@ -104,8 +107,11 @@
         .btn-start { background-color: var(--btn-start-bg); color: var(--btn-start-text); }
         .btn-pause { background-color: var(--btn-pause-bg); color: var(--btn-pause-text); }
         .btn-stop { background-color: var(--btn-stop-bg); color: var(--btn-stop-text); }
+        
         .btn-save { background-color: var(--btn-save-bg); color: var(--btn-save-text); }
         .btn-util { background-color: var(--btn-util-bg); color: var(--btn-util-text); }
+        .btn-txt { background-color: var(--btn-txt-bg); color: var(--btn-txt-text); } /* New */
+        
         .hidden { display: none !important; }
 
         .toggle-wrapper { display: flex; align-items: center; gap: 10px; margin-left: 15px; font-size: 0.9rem; color: var(--text-sub); font-weight: 600; cursor: pointer; }
@@ -197,7 +203,7 @@
 <body>
 
     <header>
-        <h2>🎙️ Voice Note V24</h2>
+        <h2>🎙️ Voice Note</h2>
         <div class="header-right">
             <div id="timer" class="timer">00:00</div>
             <button class="btn-theme" onclick="toggleTheme()" id="btnTheme">🌙 Dark</button>
@@ -228,7 +234,12 @@
         
         <div style="width:20px;"></div>
         
-        <button id="btnSave" class="control-btn btn-save" onclick="saveProject()">💾 Save</button>
+        <button id="btnSave" class="control-btn btn-save" onclick="saveProject()">💾 Project</button>
+        <button class="control-btn btn-txt" onclick="saveTranscriptText()">📄 Script.txt</button>
+        <button class="control-btn btn-txt" onclick="saveMemoText()">📝 Memo.txt</button>
+        
+        <div style="width:10px;"></div>
+        
         <button class="control-btn btn-util" onclick="document.getElementById('fileInput').click()">📂 Load</button>
         <button class="control-btn btn-util" onclick="newSession()">📄 New</button>
         <input type="file" id="fileInput" accept=".json" onchange="loadProject(this)">
@@ -249,7 +260,7 @@
                 <div id="finalContainer">
                     <div style="color:var(--text-ghost); text-align:center; margin-top:80px; font-weight: 500;">
                         Press <strong>Start</strong> to begin.<br>
-                        V24: Precise Audio Sync Fixed
+                        V25: Text Export Added 📄
                     </div>
                 </div>
                 <div id="interimText"></div>
@@ -301,8 +312,6 @@
         let isPaused = false;
         let sessionHistory = []; 
         let lastInterim = "";
-        
-        // [V24] 문장별 시작 시간을 기억하는 저장소
         let sentenceStartMap = {}; 
 
         const finalContainer = document.getElementById('finalContainer');
@@ -338,19 +347,14 @@
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
                     const transcript = event.results[i][0].transcript;
                     
-                    // [V24 핵심] 해당 문장(i)이 '처음' 감지되었을 때의 시간을 기록
                     if (!sentenceStartMap[i]) {
-                        // 조금 더 여유있게 앞부분을 잡기 위해 1.0초를 뺌 (Rewind)
                         sentenceStartMap[i] = Math.max(0, currentRealTime - 1.0);
                     }
 
                     if (event.results[i].isFinal) {
-                        // 기록해둔 '시작 시간'을 사용
                         let finalTime = sentenceStartMap[i];
                         addFinalRow(finalTime, transcript);
-                        
                         lastInterim = "";
-                        // 메모리 정리 (혹시 모를 누수 방지)
                         delete sentenceStartMap[i];
                     } else {
                         interimTranscript += transcript;
@@ -367,7 +371,7 @@
             recognition.onend = () => {
                 if (lastInterim.trim() !== "") {
                     let currentRealTime = (Date.now() - startTime - pausedTime) / 1000;
-                    addFinalRow(currentRealTime - 1.0, lastInterim); // 비상 종료 시에도 1초 뺌
+                    addFinalRow(currentRealTime - 1.0, lastInterim); 
                     lastInterim = ""; interimText.innerText = "";
                 }
                 if (isRecording && !isPaused) {
@@ -411,8 +415,8 @@
             const ghost = interimText.innerText;
             if (!ghost) return;
             let currentRealTime = (Date.now() - startTime - pausedTime) / 1000;
-            addFinalRow(currentRealTime - 1.0, ghost); // 강제 종료 시에도 1초 뺌
-            interimText.innerText = ''; lastInterim = "";
+            addFinalRow(currentRealTime - 1.0, ghost); 
+            interimText.innerText = ''; lastInterim = ""; sentenceStartMap = {};
             recognition.abort(); 
         }
 
@@ -624,6 +628,27 @@
                 finalContainer.innerHTML = '<div style="color:var(--text-ghost); text-align:center; margin-top:60px;">New Session Ready</div>';
                 insertCleanLine(0);
             }
+        }
+
+        // [V25 New] Save Text Functions
+        function saveTranscriptText() {
+            let content = "";
+            const rows = finalContainer.querySelectorAll('.row');
+            rows.forEach(row => {
+                const time = row.querySelector('.time-tag').innerText;
+                const text = row.querySelector('.text-content').innerText;
+                content += `[${time}] ${text}\n`;
+            });
+            downloadFile(content, `Script_${getDateStr()}.txt`, 'text/plain');
+        }
+
+        function saveMemoText() {
+            let content = "";
+            const lines = memoArea.querySelectorAll('.memo-line');
+            lines.forEach(line => {
+                content += line.innerText + "\n";
+            });
+            downloadFile(content, `Memo_${getDateStr()}.txt`, 'text/plain');
         }
 
         function saveProject() {
