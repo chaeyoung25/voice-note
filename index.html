@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Voice Note V32</title>
+    <title>Voice Note V33</title>
     <style>
         /* [Apple Style Variables] */
         :root {
@@ -25,16 +25,17 @@
             --tag-text: #007AFF;      
             --memo-hover: #F2F2F7;
 
-            /* Pastel Buttons */
-            --btn-start-bg: #A8E6CF;  --btn-start-text: #2D5A45;
-            --btn-pause-bg: #FDFFB6;  --btn-pause-text: #6B6B38;
-            --btn-stop-bg: #FFD3B6;   --btn-stop-text: #7A4633;
+            /* [Pastel Buttons Palette] */
+            --btn-start-bg: #A8E6CF;  --btn-start-text: #2D5A45; /* Mint */
+            --btn-pause-bg: #FDFFB6;  --btn-pause-text: #6B6B38; /* Lemon */
+            --btn-stop-bg: #FFD3B6;   --btn-stop-text: #7A4633;  /* Peach */
             
-            /* Save All Button */
-            --btn-save-bg: #A0C4FF;   --btn-save-text: #2B4570;
+            --btn-save-bg: #A0C4FF;   --btn-save-text: #2B4570;  /* Sky */
+            --btn-txt-bg: #FFD6E0;    --btn-txt-text: #8B4055;   /* Rose */
             
-            /* Smart Load Button */
-            --btn-load-bg: #DCD3FF;   --btn-load-text: #4A3F6B; 
+            /* [Color Update] */
+            --btn-load-bg: #DCD3FF;   --btn-load-text: #4A3F6B;  /* Lavender (Load) */
+            --btn-new-bg: #FFC8DD;    --btn-new-text: #8B2D53;   /* Pink (New) - Distinct! */
         }
 
         /* [Dark Mode] */
@@ -60,8 +61,12 @@
             --btn-start-bg: #598F78;  --btn-start-text: #FFFFFF;
             --btn-pause-bg: #8F8F59;  --btn-pause-text: #FFFFFF;
             --btn-stop-bg: #A66E5C;   --btn-stop-text: #FFFFFF;
+            
             --btn-save-bg: #4A6FA5;   --btn-save-text: #FFFFFF;
+            --btn-txt-bg: #A65D6E;    --btn-txt-text: #FFFFFF;
+            
             --btn-load-bg: #685E8A;   --btn-load-text: #FFFFFF;
+            --btn-new-bg: #A6607C;    --btn-new-text: #FFFFFF;
         }
 
         body { 
@@ -110,7 +115,11 @@
         .btn-stop { background-color: var(--btn-stop-bg); color: var(--btn-stop-text); }
         
         .btn-save { background-color: var(--btn-save-bg); color: var(--btn-save-text); }
+        .btn-txt { background-color: var(--btn-txt-bg); color: var(--btn-txt-text); }
+        
+        /* Separate Colors */
         .btn-load { background-color: var(--btn-load-bg); color: var(--btn-load-text); }
+        .btn-new { background-color: var(--btn-new-bg); color: var(--btn-new-text); }
         
         .hidden { display: none !important; }
 
@@ -204,7 +213,7 @@
 <body>
 
     <header>
-        <h2>🎙️ Voice Note V32</h2>
+        <h2>🎙️ Voice Note V33</h2>
         <div class="header-right">
             <div id="timer" class="timer">00:00</div>
             <button class="btn-theme" onclick="toggleTheme()" id="btnTheme">🌙 Dark</button>
@@ -227,12 +236,12 @@
         
         <div style="width:20px;"></div>
         
-        <button id="btnSaveAll" class="control-btn btn-save" onclick="saveAll()">💾 Save All</button>
+        <button id="btnSave" class="control-btn btn-save" onclick="saveAll()">💾 Save All</button>
         
         <div style="width:10px;"></div>
         
         <button class="control-btn btn-load" onclick="document.getElementById('universalLoader').click()">📂 Smart Load</button>
-        <button class="control-btn btn-load" onclick="newSession()">📄 New</button>
+        <button class="control-btn btn-new" onclick="newSession()">📄 New</button>
         
         <input type="file" id="universalLoader" multiple accept=".json, .txt, audio/*" onchange="handleSmartLoad(this)">
     </div>
@@ -332,7 +341,6 @@
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
                     const transcript = event.results[i][0].transcript;
                     if (!sentenceStartMap[i]) {
-                        // [Sync 10s]
                         sentenceStartMap[i] = Math.max(0, currentRealTime - 10.0);
                     }
                     if (event.results[i].isFinal) {
@@ -614,18 +622,17 @@
             }
         }
 
-        // [V32] Save All Logic
         function saveAll() {
             const dateStr = getDateStr();
-
-            // 1. JSON
             const rows = document.querySelectorAll('.row');
+            
+            // 1. JSON
             let scripts = [];
             rows.forEach(row => { scripts.push({ time: row.getAttribute('data-time'), text: row.querySelector('.text-content').innerText }); });
             const data = { memoHTML: memoArea.innerHTML, scripts: scripts };
             downloadFile(JSON.stringify(data), `Project_${dateStr}.json`, 'application/json');
 
-            // 2. Transcript TXT
+            // 2. Transcript
             let transcriptContent = "";
             rows.forEach(row => {
                 const time = row.querySelector('.time-tag').innerText;
@@ -634,7 +641,7 @@
             });
             setTimeout(() => downloadFile(transcriptContent, `Script_${dateStr}.txt`, 'text/plain'), 100);
 
-            // 3. Memo TXT
+            // 3. Memo
             let memoContent = "";
             const lines = memoArea.querySelectorAll('.memo-line');
             lines.forEach(line => { memoContent += line.innerText + "\n"; });
