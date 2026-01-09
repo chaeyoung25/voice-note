@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Voice Note V23</title>
+    <title>Voice Note V24</title>
     <style>
         /* [Apple Style Variables] */
         :root {
@@ -197,7 +197,7 @@
 <body>
 
     <header>
-        <h2>🎙️ Voice Note</h2>
+        <h2>🎙️ Voice Note V24</h2>
         <div class="header-right">
             <div id="timer" class="timer">00:00</div>
             <button class="btn-theme" onclick="toggleTheme()" id="btnTheme">🌙 Dark</button>
@@ -249,7 +249,7 @@
                 <div id="finalContainer">
                     <div style="color:var(--text-ghost); text-align:center; margin-top:80px; font-weight: 500;">
                         Press <strong>Start</strong> to begin.<br>
-                        Accurate Sync & Safe Resume
+                        V24: Precise Audio Sync Fixed
                     </div>
                 </div>
                 <div id="interimText"></div>
@@ -280,7 +280,6 @@
     </div>
 
     <script>
-        // --- Theme ---
         let isDarkMode = false;
         function toggleTheme() {
             const body = document.body;
@@ -290,7 +289,6 @@
             else { body.classList.remove('dark-mode'); btn.innerText = "🌙 Dark"; }
         }
 
-        // --- Core Variables ---
         let recognition;
         let mediaRecorder;
         let audioChunks = [];
@@ -304,8 +302,8 @@
         let sessionHistory = []; 
         let lastInterim = "";
         
-        // [V23 Sync Fix] 문장이 시작된 시간을 기록하는 변수
-        let sentenceStartTime = null; 
+        // [V24] 문장별 시작 시간을 기억하는 저장소
+        let sentenceStartMap = {}; 
 
         const finalContainer = document.getElementById('finalContainer');
         const interimText = document.getElementById('interimText');
@@ -323,7 +321,6 @@
         const autoScrollCheck = document.getElementById('autoScrollCheck');
         const memoArea = document.getElementById('memoArea');
 
-        // --- STT ---
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         
         if (SpeechRecognition) {
@@ -334,26 +331,27 @@
 
             recognition.onresult = (event) => {
                 let interimTranscript = '';
-                // 현재 절대 시간 (말하는 순간)
                 let currentRealTime = (Date.now() - startTime - pausedTime) / 1000;
-
-                // [V23 Fix] 새로운 문장이 시작되는 순간(Interim이 처음 생길 때)의 시간을 잡는다
-                if (sentenceStartTime === null) {
-                    sentenceStartTime = currentRealTime;
-                }
 
                 if(finalContainer.innerText.includes('Press Start')) finalContainer.innerHTML = '';
 
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
                     const transcript = event.results[i][0].transcript;
+                    
+                    // [V24 핵심] 해당 문장(i)이 '처음' 감지되었을 때의 시간을 기록
+                    if (!sentenceStartMap[i]) {
+                        // 조금 더 여유있게 앞부분을 잡기 위해 1.0초를 뺌 (Rewind)
+                        sentenceStartMap[i] = Math.max(0, currentRealTime - 1.0);
+                    }
+
                     if (event.results[i].isFinal) {
-                        // [V23 Fix] 문장이 끝났을 때(Final), 아까 잡아둔 '시작 시간'을 사용한다.
-                        // 만약 시작 시간이 없으면 현재 시간이라도 쓴다.
-                        let finalTime = sentenceStartTime !== null ? sentenceStartTime : currentRealTime;
+                        // 기록해둔 '시작 시간'을 사용
+                        let finalTime = sentenceStartMap[i];
                         addFinalRow(finalTime, transcript);
                         
                         lastInterim = "";
-                        sentenceStartTime = null; // 초기화: 다음 문장 시작 시간 잡기 위해
+                        // 메모리 정리 (혹시 모를 누수 방지)
+                        delete sentenceStartMap[i];
                     } else {
                         interimTranscript += transcript;
                     }
@@ -368,14 +366,12 @@
 
             recognition.onend = () => {
                 if (lastInterim.trim() !== "") {
-                    // 비상 종료 시에도 잡아둔 시작 시간이 있으면 사용
-                    let finalTime = sentenceStartTime !== null ? sentenceStartTime : (Date.now() - startTime - pausedTime) / 1000;
-                    addFinalRow(finalTime, lastInterim);
-                    lastInterim = ""; interimText.innerText = ""; sentenceStartTime = null;
+                    let currentRealTime = (Date.now() - startTime - pausedTime) / 1000;
+                    addFinalRow(currentRealTime - 1.0, lastInterim); // 비상 종료 시에도 1초 뺌
+                    lastInterim = ""; interimText.innerText = "";
                 }
-                
                 if (isRecording && !isPaused) {
-                    try { recognition.start(); } catch(e) { console.log("Re-start check"); }
+                    try { recognition.start(); } catch(e) {}
                 }
             };
         } else {
@@ -403,7 +399,6 @@
             interimText.innerText = ''; 
         }
 
-        // --- Force Finalize ---
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Enter' && document.activeElement !== memoArea) {
                 if (isRecording && !isPaused && interimText.innerText.trim() !== '') {
@@ -415,18 +410,15 @@
         function forceFinalize() {
             const ghost = interimText.innerText;
             if (!ghost) return;
-            // 강제 종료 시에도 잡아둔 시작 시간 사용
-            let finalTime = sentenceStartTime !== null ? sentenceStartTime : (Date.now() - startTime - pausedTime) / 1000;
-            addFinalRow(finalTime, ghost);
-            
-            interimText.innerText = ''; lastInterim = ""; sentenceStartTime = null;
+            let currentRealTime = (Date.now() - startTime - pausedTime) / 1000;
+            addFinalRow(currentRealTime - 1.0, ghost); // 강제 종료 시에도 1초 뺌
+            interimText.innerText = ''; lastInterim = "";
             recognition.abort(); 
         }
 
         function scrollUp() { transcriptScroll.scrollBy({ top: -150, behavior: 'smooth' }); autoScrollCheck.checked = false; }
         function scrollDown() { transcriptScroll.scrollBy({ top: 150, behavior: 'smooth' }); }
 
-        // --- Memo Logic ---
         memoArea.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault(); 
@@ -533,13 +525,11 @@
         async function startRecord() {
             if (finalContainer.innerText.length > 20 && !finalContainer.innerText.includes('Press Start')) { addToHistory(); }
             finalContainer.innerHTML = ''; interimText.innerText = '';
-            memoArea.innerHTML = ''; insertCleanLine(0); 
+            memoArea.innerHTML = ''; insertCleanLine(0); sentenceStartMap = {};
             audioChunks = []; audioBlob = null; audioContainer.style.display = 'none';
             startTime = Date.now(); pausedTime = 0;
             isRecording = true; isPaused = false;
-            sentenceStartTime = null; // 초기화
             updateUI('recording'); startTimer();
-            
             if(navigator.mediaDevices) {
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -569,7 +559,7 @@
             isPaused = false;
             pausedTime += (Date.now() - pauseStart);
             if(mediaRecorder && mediaRecorder.state === 'paused') mediaRecorder.resume();
-            try { recognition.start(); } catch(e) { console.log("Resume start"); }
+            try { recognition.start(); } catch(e) {}
             startTimer();
             updateUI('recording');
         }
@@ -629,7 +619,7 @@
         function newSession() {
             if(confirm("Start New Session?")) {
                 if(isRecording) stopRecord(); else addToHistory(); 
-                finalContainer.innerHTML = ''; interimText.innerText = ''; memoArea.innerHTML = ''; lastInterim = "";
+                finalContainer.innerHTML = ''; interimText.innerText = ''; memoArea.innerHTML = ''; lastInterim = ""; sentenceStartMap = {};
                 audioPlayer.src = ''; audioContainer.style.display = 'none'; timerDisplay.innerText = "00:00"; 
                 finalContainer.innerHTML = '<div style="color:var(--text-ghost); text-align:center; margin-top:60px;">New Session Ready</div>';
                 insertCleanLine(0);
